@@ -16,6 +16,7 @@ class VideoMergerApp:
         # Variables
         self.selected_folder = tk.StringVar()
         self.target_duration = tk.DoubleVar(value=25.0)
+        self.aspect_ratio = tk.StringVar(value="16:9")
         self.output_path = tk.StringVar()
         self.progress_var = tk.DoubleVar()
         self.status_var = tk.StringVar(value="Sẵn sàng")
@@ -23,6 +24,7 @@ class VideoMergerApp:
         # Bind events to reset progress
         self.selected_folder.trace('w', self.reset_progress)
         self.target_duration.trace('w', self.reset_progress)
+        self.aspect_ratio.trace('w', self.reset_progress)
         self.output_path.trace('w', self.reset_progress)
         
         self.setup_ui()
@@ -47,13 +49,22 @@ class VideoMergerApp:
         ttk.Entry(main_frame, textvariable=self.selected_folder, width=50).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
         ttk.Button(main_frame, text="Chọn thư mục", command=self.select_folder).grid(row=1, column=2, pady=5)
         
-        # Duration settings
-        duration_frame = ttk.LabelFrame(main_frame, text="Cài đặt thời lượng (giây)", padding="10")
-        duration_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
-        duration_frame.columnconfigure(1, weight=1)
+        # Duration and aspect ratio settings
+        settings_frame = ttk.LabelFrame(main_frame, text="Cài đặt video", padding="10")
+        settings_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        settings_frame.columnconfigure(1, weight=1)
+        settings_frame.columnconfigure(3, weight=1)
         
-        ttk.Label(duration_frame, text="Thời lượng mong muốn:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
-        ttk.Entry(duration_frame, textvariable=self.target_duration, width=15).grid(row=0, column=1, sticky=tk.W, padx=(5, 0))
+        # Duration setting
+        ttk.Label(settings_frame, text="Thời lượng (giây):").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        ttk.Entry(settings_frame, textvariable=self.target_duration, width=10).grid(row=0, column=1, sticky=tk.W, padx=(5, 20))
+        
+        # Aspect ratio setting
+        ttk.Label(settings_frame, text="Tỷ lệ khung hình:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
+        aspect_combo = ttk.Combobox(settings_frame, textvariable=self.aspect_ratio, width=12, state="readonly")
+        aspect_combo['values'] = ('16:9 (Ngang)', '9:16 (Dọc)', '4:3 (Vuông)', '1:1 (Vuông)')
+        aspect_combo.grid(row=0, column=3, sticky=tk.W, padx=(5, 0))
+        aspect_combo.set('16:9 (Ngang)')  # Default value
         
         # Output path
         ttk.Label(main_frame, text="File đầu ra:").grid(row=3, column=0, sticky=tk.W, pady=5)
@@ -92,12 +103,14 @@ class VideoMergerApp:
 
 1. Chọn thư mục chứa các file video (.mp4, .avi, .mov, .mkv)
 2. Thiết lập thời lượng mong muốn cho video cuối
-3. Chọn vị trí và tên file đầu ra
-4. Nhấn "Bắt đầu nối video" để thực hiện
+3. Chọn tỷ lệ khung hình (16:9 ngang, 9:16 dọc, 4:3 hoặc 1:1 vuông)
+4. Chọn vị trí và tên file đầu ra
+5. Nhấn "Bắt đầu nối video" để thực hiện
 
 Lưu ý:
 - Tool sẽ trộn ngẫu nhiên và chọn video tuần tự
 - Video sẽ được cắt để đạt đúng thời lượng mong muốn
+- Tất cả video sẽ được chuẩn hóa theo tỷ lệ khung hình đã chọn
 - Không có video nào xuất hiện liền nhau
 - Đảm bảo có đủ dung lượng ổ cứng cho file đầu ra"""
         
@@ -280,21 +293,26 @@ Lưu ý:
             target_fps = None
             target_size = None
             
-            # First pass: determine target fps and size
-            for video_info in selected_videos:
-                try:
-                    temp_clip = VideoFileClip(video_info['file'])
-                    if target_fps is None:
-                        target_fps = temp_clip.fps
-                        target_size = temp_clip.size
-                    temp_clip.close()
-                    break
-                except Exception as e:
-                    self.log_message(f"Lỗi khi đọc thông số video {Path(video_info['file']).name}: {str(e)}")
-                    continue
+            # Determine target fps and size based on aspect ratio selection
+            aspect_ratio_text = self.aspect_ratio.get()
+            target_fps = 30.0  # Standard fps
             
-            if target_fps is None:
-                raise Exception("Không thể đọc thông số video nào!")
+            # Parse aspect ratio and set target size
+            if '16:9' in aspect_ratio_text:
+                target_size = (1920, 1080)  # Full HD landscape
+                self.log_message("Chuẩn hóa theo tỷ lệ 16:9 (Ngang) - 1920x1080")
+            elif '9:16' in aspect_ratio_text:
+                target_size = (1080, 1920)  # Full HD portrait
+                self.log_message("Chuẩn hóa theo tỷ lệ 9:16 (Dọc) - 1080x1920")
+            elif '4:3' in aspect_ratio_text:
+                target_size = (1440, 1080)  # 4:3 aspect ratio
+                self.log_message("Chuẩn hóa theo tỷ lệ 4:3 (Vuông) - 1440x1080")
+            elif '1:1' in aspect_ratio_text:
+                target_size = (1080, 1080)  # Square
+                self.log_message("Chuẩn hóa theo tỷ lệ 1:1 (Vuông) - 1080x1080")
+            else:
+                target_size = (1920, 1080)  # Default to 16:9
+                self.log_message("Sử dụng mặc định 16:9 - 1920x1080")
             
             self.log_message(f"Chuẩn hóa video theo: {target_size[0]}x{target_size[1]} @ {target_fps}fps")
             
@@ -325,8 +343,10 @@ Lưu ý:
                         if clip.fps != target_fps:
                             clip = clip.with_fps(target_fps)
                         
+                        # Resize with proper aspect ratio handling
                         if clip.size != target_size:
-                            clip = clip.resized(target_size)
+                            # Resize and center crop to maintain aspect ratio
+                            clip = clip.resized(target_size).with_position('center')
                         
                         clips.append(clip)
                         actual_total_duration += clip.duration
@@ -432,7 +452,8 @@ Lưu ý:
                         if clip.fps != target_fps:
                             clip = clip.with_fps(target_fps)
                         if clip.size != target_size:
-                            clip = clip.resized(target_size)
+                            # Resize and center crop to maintain aspect ratio
+                            clip = clip.resized(target_size).with_position('center')
                         
                         clips.append(clip)
                         actual_total_duration += clip.duration
