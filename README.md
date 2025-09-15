@@ -1,14 +1,26 @@
-# Random Video Merger - Công cụ nối video ngẫu nhiên
+# Video Tool - Công cụ xử lý video
 
-Công cụ này giúp bạn nối các file video trong một thư mục một cách ngẫu nhiên để tạo ra một video có thời lượng nằm trong khoảng thời gian mong muốn.
+Công cụ này cung cấp hai tính năng chính: **gộp video ngẫu nhiên** và **tách video** với giao diện đồ họa thân thiện.
 
 ## Tính năng chính
 
+### 🎬 Gộp Video (Merge)
 - **Nối video ngẫu nhiên**: Chọn ngẫu nhiên các video từ thư mục và nối chúng lại
-- **Kiểm soát thời lượng**: Thiết lập khoảng thời gian mong muốn (ví dụ: 24-26 giây)
-- **Giao diện đơn giản**: Sử dụng giao diện đồ họa dễ sử dụng
+- **Kiểm soát thời lượng**: Thiết lập thời lượng mong muốn cho video cuối
+- **Chuẩn hóa tỷ lệ khung hình**: Hỗ trợ 16:9, 9:16, 4:3, 1:1
+- **Tránh lặp lại**: Không có video nào xuất hiện liền nhau
+
+### ✂️ Tách Video (Split)
+- **Tách video thành đoạn**: Chia một video dài thành nhiều đoạn ngắn
+- **Tùy chỉnh thời lượng**: Thiết lập độ dài mỗi đoạn video (ví dụ: 5 giây)
+- **Đánh số tự động**: Tên file được tạo tự động theo thứ tự (video_001.mp4, video_002.mp4...)
+- **Xử lý đoạn cuối**: Đoạn cuối được xử lý đúng cách nếu không đủ thời lượng
+
+### 🖥️ Giao diện và Tiện ích
+- **Giao diện tab**: Chuyển đổi dễ dàng giữa hai tính năng
 - **Hỗ trợ nhiều định dạng**: MP4, AVI, MOV, MKV, WMV, FLV, WebM
 - **Theo dõi tiến trình**: Thanh tiến trình và thông báo chi tiết
+- **Log chi tiết**: Hiển thị quá trình xử lý từng bước
 
 ## Yêu cầu hệ thống
 
@@ -69,37 +81,63 @@ Giao diện của công cụ sẽ xuất hiện.
 
 ## Hướng dẫn sử dụng
 
-### Bước 1: Chuẩn bị video
-- Tạo một thư mục chứa các file video bạn muốn nối
+Ứng dụng có giao diện với hai tab: **"Gộp Video"** và **"Tách Video"**.
+
+### 🎬 Tab Gộp Video (Video Merge)
+
+#### Bước 1: Chuẩn bị video
+- Tạo một thư mục chứa các file video bạn muốn gộp
 - Các video nên có định dạng: MP4, AVI, MOV, MKV, WMV, FLV, WebM
 - Đảm bảo các video có thể phát được bình thường
 
-### Bước 2: Sử dụng công cụ
-
+#### Bước 2: Thực hiện gộp video
 1. **Chọn thư mục video**:
    - Nhấn nút "Chọn thư mục"
    - Duyệt đến thư mục chứa video của bạn
    - Chọn thư mục và nhấn OK
 
-2. **Thiết lập thời lượng**:
-   - Nhập thời lượng tối thiểu (ví dụ: 24)
-   - Nhập thời lượng tối đa (ví dụ: 26)
-   - Đơn vị tính: giây
+2. **Cài đặt video**:
+   - **Thời lượng**: Nhập thời lượng mong muốn (ví dụ: 25 giây)
+   - **Tỷ lệ khung hình**: Chọn 16:9 (Ngang), 9:16 (Dọc), 4:3 hoặc 1:1 (Vuông)
 
 3. **Chọn file đầu ra**:
    - Nhấn nút "Chọn vị trí"
-   - Chọn nơi lưu file và đặt tên (ví dụ: `output.mp4`)
+   - Chọn nơi lưu file và đặt tên (ví dụ: `merged_video.mp4`)
    - Nhấn Save
 
 4. **Bắt đầu xử lý**:
    - Nhấn nút "Bắt đầu nối video"
-   - Theo dõi tiến trình qua thanh progress bar
+   - Theo dõi tiến trình qua thanh progress bar và log
    - Đợi thông báo hoàn thành
 
-### Bước 3: Kết quả
-- File video đã nối sẽ được lưu tại vị trí bạn đã chọn
-- Thời lượng video sẽ nằm trong khoảng bạn đã thiết lập
-- Các video được chọn ngẫu nhiên từ thư mục gốc
+### ✂️ Tab Tách Video (Video Split)
+
+#### Bước 1: Chuẩn bị video
+- Chuẩn bị file video cần tách (MP4, AVI, MOV, MKV, WMV, FLV, WebM)
+- Tạo thư mục để lưu các đoạn video được tách
+
+#### Bước 2: Thực hiện tách video
+1. **Chọn video cần tách**:
+   - Nhấn nút "Chọn video"
+   - Duyệt và chọn file video cần tách
+   - Ứng dụng sẽ hiển thị thời lượng video
+
+2. **Chọn thư mục lưu**:
+   - Nhấn nút "Chọn thư mục"
+   - Chọn thư mục để lưu các đoạn video được tách
+
+3. **Cài đặt tách video**:
+   - **Thời lượng mỗi đoạn**: Nhập số giây cho mỗi đoạn (ví dụ: 5 giây)
+   - Ứng dụng sẽ tự động tính số đoạn cần tách
+
+4. **Bắt đầu tách**:
+   - Nhấn nút "Bắt đầu tách video"
+   - Theo dõi tiến trình qua thanh progress bar và log
+   - Các file sẽ được tạo với tên: `tên_gốc_001.mp4`, `tên_gốc_002.mp4`, ...
+
+### 📋 Kết quả
+- **Gộp video**: File video đã nối được lưu tại vị trí đã chọn
+- **Tách video**: Các đoạn video được lưu trong thư mục đã chọn với tên được đánh số thứ tự
 
 ## Xử lý lỗi thường gặp
 
@@ -133,29 +171,61 @@ pip install moviepy
 ### Lỗi: "Memory Error" hoặc máy bị treo
 **Nguyên nhân**: Video quá lớn hoặc quá nhiều video
 **Giải pháp**:
-- Giảm số lượng video trong thư mục
+- Giảm số lượng video trong thư mục (gộp video)
 - Sử dụng video có độ phân giải thấp hơn
 - Đóng các ứng dụng khác để giải phóng RAM
+- Với tách video: Thử tách thành đoạn ngắn hơn (ví dụ: 3 giây thay vì 10 giây)
+
+### Lỗi: "'NoneType' object has no attribute 'stdout'" (Tách Video)
+**Nguyên nhân**: Lỗi ffmpeg khi xử lý nhiều đoạn video liên tiếp
+**Giải pháp**:
+- Khởi động lại ứng dụng và thử lại
+- Thử tách với thời lượng đoạn khác nhau
+- Đảm bảo video gốc không bị hỏng
+- Chọn thư mục đầu ra khác
+
+### Lỗi: Video bị lỗi hoặc không phát được (Tách Video)
+**Nguyên nhân**: Một số đoạn video có thể bị lỗi trong quá trình tách
+**Giải pháp**:
+- Kiểm tra video gốc có phát được đầy đủ không
+- Thử tách với thời lượng ngắn hơn
+- Sử dụng video có định dạng MP4 để đảm bảo tương thích tốt nhất
 
 
 ## Lưu ý quan trọng
 
-1. **Hiệu suất**: Quá trình nối video có thể mất từ vài phút đến vài chục phút tùy thuộc vào:
-   - Số lượng video
+### 🎬 Cho tính năng Gộp Video
+1. **Hiệu suất**: Quá trình gộp video có thể mất từ vài phút đến vài chục phút tùy thuộc vào:
+   - Số lượng video và thời lượng mục tiêu
    - Kích thước và độ phân giải video
    - Cấu hình máy tính
 
-2. **Dung lượng**: Đảm bảo có đủ dung lượng ổ cứng:
+2. **Dung lượng**: 
    - File đầu ra có thể lớn hơn tổng dung lượng các video gốc
    - Cần thêm khoảng 20-30% dung lượng dự phòng
 
 3. **Chất lượng**: 
    - Chất lượng video đầu ra phụ thuộc vào video gốc
-   - Các video có độ phân giải khác nhau sẽ được chuẩn hóa
+   - Tất cả video sẽ được chuẩn hóa theo tỷ lệ khung hình đã chọn
 
+### ✂️ Cho tính năng Tách Video
+1. **Hiệu suất**: Quá trình tách video phụ thuộc vào:
+   - Độ dài video gốc và thời lượng mỗi đoạn
+   - Chất lượng video gốc
+   - Số lượng đoạn cần tạo
+
+2. **Dung lượng**: 
+   - Tổng dung lượng các đoạn video sẽ lớn hơn video gốc
+   - Cần có ít nhất 150% dung lượng của video gốc để tách
+
+3. **Tên file**: 
+   - File được đánh số tự động: `tên_gốc_001.mp4`, `tên_gốc_002.mp4`...
+   - Đảm bảo thư mục đầu ra có quyền ghi
+
+### 🔧 Chung
 4. **Định dạng hỗ trợ**:
    - Đầu vào: MP4, AVI, MOV, MKV, WMV, FLV, WebM
-   - Đầu ra: MP4 (khuyến nghị)
+   - Đầu ra: MP4 (khuyến nghị cho tính ổn định tốt nhất)
 
 ## Liên hệ và hỗ trợ
 
@@ -167,6 +237,14 @@ Nếu gặp vấn đề không thể giải quyết:
 
 ## Phiên bản
 
-- **v1.0**: Phiên bản đầu tiên với đầy đủ tính năng cơ bản
-- Hỗ trợ nối video ngẫu nhiên với kiểm soát thời lượng
-- Giao diện đồ họa thân thiện với người dùng
+- **v1.0**: Phiên bản đầu tiên - Chỉ có tính năng gộp video
+  - Hỗ trợ nối video ngẫu nhiên với kiểm soát thời lượng
+  - Giao diện đồ họa cơ bản
+
+- **v2.0**: Phiên bản hiện tại - Video Tool hoàn chỉnh
+  - ✨ **TÍNH NĂNG MỚI**: Tách video thành các đoạn nhỏ
+  - 🎨 Giao diện tab với hai tính năng chính
+  - 🔧 Cải thiện độ ổn định và xử lý lỗi
+  - 📏 Hỗ trợ nhiều tỷ lệ khung hình cho gộp video
+  - 📝 Log chi tiết cho cả hai tính năng
+  - 🛠️ Xử lý fallback tốt hơn khi gặp lỗi
