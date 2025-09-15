@@ -9,21 +9,33 @@ from pathlib import Path
 class VideoMergerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Random Video Merger - Công cụ nối video ngẫu nhiên")
-        self.root.geometry("600x500")
+        self.root.title("Video Tool - Công cụ xử lý video")
+        self.root.geometry("650x550")
         self.root.resizable(True, True)
         
-        # Variables
+        # Variables for merge feature
         self.selected_folder = tk.StringVar()
         self.target_duration = tk.DoubleVar(value=25.0)
+        self.aspect_ratio = tk.StringVar(value="16:9")
         self.output_path = tk.StringVar()
+        
+        # Variables for split feature
+        self.split_input_file = tk.StringVar()
+        self.split_output_folder = tk.StringVar()
+        self.split_duration = tk.DoubleVar(value=5.0)
+        
+        # Common variables
         self.progress_var = tk.DoubleVar()
         self.status_var = tk.StringVar(value="Sẵn sàng")
         
         # Bind events to reset progress
         self.selected_folder.trace('w', self.reset_progress)
         self.target_duration.trace('w', self.reset_progress)
+        self.aspect_ratio.trace('w', self.reset_progress)
         self.output_path.trace('w', self.reset_progress)
+        self.split_input_file.trace('w', self.reset_progress)
+        self.split_output_folder.trace('w', self.reset_progress)
+        self.split_duration.trace('w', self.reset_progress)
         
         self.setup_ui()
         
@@ -35,74 +47,161 @@ class VideoMergerApp:
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.rowconfigure(1, weight=1)
         
         # Title
-        title_label = ttk.Label(main_frame, text="Random Video Merger", 
+        title_label = ttk.Label(main_frame, text="Video Tool - Công cụ xử lý video", 
                                font=("Arial", 16, "bold"))
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        title_label.grid(row=0, column=0, pady=(0, 10))
         
-        # Folder selection
-        ttk.Label(main_frame, text="Thư mục chứa video:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.selected_folder, width=50).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
-        ttk.Button(main_frame, text="Chọn thư mục", command=self.select_folder).grid(row=1, column=2, pady=5)
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Duration settings
-        duration_frame = ttk.LabelFrame(main_frame, text="Cài đặt thời lượng (giây)", padding="10")
-        duration_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
-        duration_frame.columnconfigure(1, weight=1)
+        # Merge tab
+        self.merge_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(self.merge_frame, text="Gộp Video")
+        self.setup_merge_tab()
         
-        ttk.Label(duration_frame, text="Thời lượng mong muốn:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
-        ttk.Entry(duration_frame, textvariable=self.target_duration, width=15).grid(row=0, column=1, sticky=tk.W, padx=(5, 0))
+        # Split tab
+        self.split_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(self.split_frame, text="Tách Video")
+        self.setup_split_tab()
         
-        # Output path
-        ttk.Label(main_frame, text="File đầu ra:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(main_frame, textvariable=self.output_path, width=50).grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
-        ttk.Button(main_frame, text="Chọn vị trí", command=self.select_output).grid(row=3, column=2, pady=5)
-        
-        # Process button
-        self.process_button = ttk.Button(main_frame, text="Bắt đầu nối video", 
-                                        command=self.start_processing, style="Accent.TButton")
-        self.process_button.grid(row=4, column=0, columnspan=3, pady=20)
+        # Progress and status (common to both tabs)
+        progress_frame = ttk.Frame(main_frame, padding="10")
+        progress_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        progress_frame.columnconfigure(1, weight=1)
         
         # Progress bar
-        ttk.Label(main_frame, text="Tiến trình:").grid(row=5, column=0, sticky=tk.W, pady=5)
-        self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, 
+        ttk.Label(progress_frame, text="Tiến trình:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, 
                                           maximum=100, length=400)
-        self.progress_bar.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), padx=(5, 0), pady=5)
+        self.progress_bar.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 0), pady=5)
         
         # Status
-        self.status_label = ttk.Label(main_frame, textvariable=self.status_var)
-        self.status_label.grid(row=6, column=0, columnspan=3, pady=5)
+        self.status_label = ttk.Label(progress_frame, textvariable=self.status_var)
+        self.status_label.grid(row=1, column=0, columnspan=2, pady=5)
+    
+    def setup_merge_tab(self):
+        # Configure grid weights
+        self.merge_frame.columnconfigure(1, weight=1)
+        
+        # Folder selection
+        ttk.Label(self.merge_frame, text="Thư mục chứa video:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(self.merge_frame, textvariable=self.selected_folder, width=50).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
+        ttk.Button(self.merge_frame, text="Chọn thư mục", command=self.select_folder).grid(row=0, column=2, pady=5)
+        
+        # Duration and aspect ratio settings
+        settings_frame = ttk.LabelFrame(self.merge_frame, text="Cài đặt video", padding="10")
+        settings_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        settings_frame.columnconfigure(1, weight=1)
+        settings_frame.columnconfigure(3, weight=1)
+        
+        # Duration setting
+        ttk.Label(settings_frame, text="Thời lượng (giây):").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        ttk.Entry(settings_frame, textvariable=self.target_duration, width=10).grid(row=0, column=1, sticky=tk.W, padx=(5, 20))
+        
+        # Aspect ratio setting
+        ttk.Label(settings_frame, text="Tỷ lệ khung hình:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
+        aspect_combo = ttk.Combobox(settings_frame, textvariable=self.aspect_ratio, width=12, state="readonly")
+        aspect_combo['values'] = ('16:9 (Ngang)', '9:16 (Dọc)', '4:3 (Vuông)', '1:1 (Vuông)')
+        aspect_combo.grid(row=0, column=3, sticky=tk.W, padx=(5, 0))
+        aspect_combo.set('16:9 (Ngang)')  # Default value
+        
+        # Output path
+        ttk.Label(self.merge_frame, text="File đầu ra:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(self.merge_frame, textvariable=self.output_path, width=50).grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
+        ttk.Button(self.merge_frame, text="Chọn vị trí", command=self.select_output).grid(row=2, column=2, pady=5)
+        
+        # Process button
+        self.merge_button = ttk.Button(self.merge_frame, text="Bắt đầu nối video", 
+                                       command=self.start_merge_processing, style="Accent.TButton")
+        self.merge_button.grid(row=3, column=0, columnspan=3, pady=20)
         
         # Info text
-        info_text = tk.Text(main_frame, height=8, width=70, wrap=tk.WORD)
-        info_text.grid(row=7, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
-        main_frame.rowconfigure(7, weight=1)
+        info_text = tk.Text(self.merge_frame, height=6, width=70, wrap=tk.WORD)
+        info_text.grid(row=4, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.merge_frame.rowconfigure(4, weight=1)
         
         # Scrollbar for info text
-        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=info_text.yview)
-        scrollbar.grid(row=7, column=3, sticky=(tk.N, tk.S), pady=10)
+        scrollbar = ttk.Scrollbar(self.merge_frame, orient=tk.VERTICAL, command=info_text.yview)
+        scrollbar.grid(row=4, column=3, sticky=(tk.N, tk.S), pady=10)
         info_text.configure(yscrollcommand=scrollbar.set)
         
-        self.info_text = info_text
+        self.merge_info_text = info_text
         
         # Insert initial info
-        info_content = """Hướng dẫn sử dụng:
+        info_content = """Hướng dẫn gộp video:
 
 1. Chọn thư mục chứa các file video (.mp4, .avi, .mov, .mkv)
 2. Thiết lập thời lượng mong muốn cho video cuối
-3. Chọn vị trí và tên file đầu ra
-4. Nhấn "Bắt đầu nối video" để thực hiện
+3. Chọn tỷ lệ khung hình (16:9 ngang, 9:16 dọc, 4:3 hoặc 1:1 vuông)
+4. Chọn vị trí và tên file đầu ra
+5. Nhấn "Bắt đầu nối video" để thực hiện
 
 Lưu ý:
 - Tool sẽ trộn ngẫu nhiên và chọn video tuần tự
 - Video sẽ được cắt để đạt đúng thời lượng mong muốn
-- Không có video nào xuất hiện liền nhau
-- Đảm bảo có đủ dung lượng ổ cứng cho file đầu ra"""
+- Tất cả video sẽ được chuẩn hóa theo tỷ lệ khung hình đã chọn"""
         
-        self.info_text.insert(tk.END, info_content)
-        self.info_text.config(state=tk.DISABLED)
+        self.merge_info_text.insert(tk.END, info_content)
+        self.merge_info_text.config(state=tk.DISABLED)
+    
+    def setup_split_tab(self):
+        # Configure grid weights
+        self.split_frame.columnconfigure(1, weight=1)
+        
+        # Input file selection
+        ttk.Label(self.split_frame, text="Chọn video cần tách:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(self.split_frame, textvariable=self.split_input_file, width=50).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
+        ttk.Button(self.split_frame, text="Chọn video", command=self.select_split_input).grid(row=0, column=2, pady=5)
+        
+        # Output folder selection
+        ttk.Label(self.split_frame, text="Thư mục lưu video tách:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(self.split_frame, textvariable=self.split_output_folder, width=50).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
+        ttk.Button(self.split_frame, text="Chọn thư mục", command=self.select_split_output).grid(row=1, column=2, pady=5)
+        
+        # Split duration setting
+        duration_frame = ttk.LabelFrame(self.split_frame, text="Cài đặt tách video", padding="10")
+        duration_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        
+        ttk.Label(duration_frame, text="Thời lượng mỗi đoạn (giây):").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        ttk.Entry(duration_frame, textvariable=self.split_duration, width=10).grid(row=0, column=1, sticky=tk.W, padx=(5, 0))
+        
+        # Process button
+        self.split_button = ttk.Button(self.split_frame, text="Bắt đầu tách video", 
+                                       command=self.start_split_processing, style="Accent.TButton")
+        self.split_button.grid(row=3, column=0, columnspan=3, pady=20)
+        
+        # Info text
+        split_info_text = tk.Text(self.split_frame, height=6, width=70, wrap=tk.WORD)
+        split_info_text.grid(row=4, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.split_frame.rowconfigure(4, weight=1)
+        
+        # Scrollbar for info text
+        split_scrollbar = ttk.Scrollbar(self.split_frame, orient=tk.VERTICAL, command=split_info_text.yview)
+        split_scrollbar.grid(row=4, column=3, sticky=(tk.N, tk.S), pady=10)
+        split_info_text.configure(yscrollcommand=split_scrollbar.set)
+        
+        self.split_info_text = split_info_text
+        
+        # Insert initial info
+        split_info_content = """Hướng dẫn tách video:
+
+1. Chọn file video cần tách (.mp4, .avi, .mov, .mkv)
+2. Chọn thư mục để lưu các video được tách
+3. Thiết lập thời lượng cho mỗi đoạn video (ví dụ: 5 giây)
+4. Nhấn "Bắt đầu tách video" để thực hiện
+
+Lưu ý:
+- Video sẽ được tách thành các đoạn có độ dài bằng nhau
+- Đoạn cuối có thể ngắn hơn nếu không đủ thời lượng
+- Tên file được đánh số thứ tự: video_001.mp4, video_002.mp4, ..."""
+        
+        self.split_info_text.insert(tk.END, split_info_content)
+        self.split_info_text.config(state=tk.DISABLED)
         
     def reset_progress(self, *args):
         """Reset progress bar when config changes"""
@@ -124,7 +223,38 @@ Lưu ý:
         )
         if output_file:
             self.output_path.set(output_file)
-            self.log_message(f"File đầu ra: {output_file}")
+            self.log_merge_message(f"File đầu ra: {output_file}")
+    
+    def select_split_input(self):
+        input_file = filedialog.askopenfilename(
+            title="Chọn video cần tách",
+            filetypes=[
+                ("Video files", "*.mp4;*.avi;*.mov;*.mkv;*.wmv;*.flv;*.webm"),
+                ("MP4 files", "*.mp4"),
+                ("AVI files", "*.avi"),
+                ("MOV files", "*.mov"),
+                ("MKV files", "*.mkv"),
+                ("All files", "*.*")
+            ]
+        )
+        if input_file:
+            self.split_input_file.set(input_file)
+            self.log_split_message(f"Video được chọn: {input_file}")
+            
+            # Try to get video info
+            try:
+                temp_clip = VideoFileClip(input_file)
+                duration = temp_clip.duration
+                temp_clip.close()
+                self.log_split_message(f"Thời lượng video: {duration:.1f} giây")
+            except Exception as e:
+                self.log_split_message(f"Lỗi khi đọc video: {str(e)}")
+    
+    def select_split_output(self):
+        output_folder = filedialog.askdirectory(title="Chọn thư mục lưu video tách")
+        if output_folder:
+            self.split_output_folder.set(output_folder)
+            self.log_split_message(f"Thư mục đầu ra: {output_folder}")
     
     def scan_videos(self):
         folder = self.selected_folder.get()
@@ -148,13 +278,24 @@ Lưu ý:
             self.log_message(f"Lỗi khi quét thư mục: {str(e)}")
     
     def log_message(self, message):
-        self.info_text.config(state=tk.NORMAL)
-        self.info_text.insert(tk.END, f"\n{message}")
-        self.info_text.see(tk.END)
-        self.info_text.config(state=tk.DISABLED)
+        # Legacy method - log to merge tab by default
+        self.log_merge_message(message)
+    
+    def log_merge_message(self, message):
+        self.merge_info_text.config(state=tk.NORMAL)
+        self.merge_info_text.insert(tk.END, f"\n{message}")
+        self.merge_info_text.see(tk.END)
+        self.merge_info_text.config(state=tk.DISABLED)
         self.root.update()
     
-    def start_processing(self):
+    def log_split_message(self, message):
+        self.split_info_text.config(state=tk.NORMAL)
+        self.split_info_text.insert(tk.END, f"\n{message}")
+        self.split_info_text.see(tk.END)
+        self.split_info_text.config(state=tk.DISABLED)
+        self.root.update()
+    
+    def start_merge_processing(self):
         # Validate inputs
         if not self.selected_folder.get():
             messagebox.showerror("Lỗi", "Vui lòng chọn thư mục chứa video!")
@@ -169,11 +310,34 @@ Lưu ý:
             return
         
         # Disable button and start processing in thread
-        self.process_button.config(state=tk.DISABLED)
+        self.merge_button.config(state=tk.DISABLED)
         self.progress_var.set(0)
         self.status_var.set("Đang xử lý...")
         
         thread = threading.Thread(target=self.process_videos)
+        thread.daemon = True
+        thread.start()
+    
+    def start_split_processing(self):
+        # Validate inputs
+        if not self.split_input_file.get():
+            messagebox.showerror("Lỗi", "Vui lòng chọn video cần tách!")
+            return
+            
+        if not self.split_output_folder.get():
+            messagebox.showerror("Lỗi", "Vui lòng chọn thư mục lưu video tách!")
+            return
+            
+        if self.split_duration.get() <= 0:
+            messagebox.showerror("Lỗi", "Thời lượng mỗi đoạn phải lớn hơn 0!")
+            return
+        
+        # Disable button and start processing in thread
+        self.split_button.config(state=tk.DISABLED)
+        self.progress_var.set(0)
+        self.status_var.set("Đang tách video...")
+        
+        thread = threading.Thread(target=self.split_video)
         thread.daemon = True
         thread.start()
     
@@ -280,21 +444,26 @@ Lưu ý:
             target_fps = None
             target_size = None
             
-            # First pass: determine target fps and size
-            for video_info in selected_videos:
-                try:
-                    temp_clip = VideoFileClip(video_info['file'])
-                    if target_fps is None:
-                        target_fps = temp_clip.fps
-                        target_size = temp_clip.size
-                    temp_clip.close()
-                    break
-                except Exception as e:
-                    self.log_message(f"Lỗi khi đọc thông số video {Path(video_info['file']).name}: {str(e)}")
-                    continue
+            # Determine target fps and size based on aspect ratio selection
+            aspect_ratio_text = self.aspect_ratio.get()
+            target_fps = 30.0  # Standard fps
             
-            if target_fps is None:
-                raise Exception("Không thể đọc thông số video nào!")
+            # Parse aspect ratio and set target size
+            if '16:9' in aspect_ratio_text:
+                target_size = (1920, 1080)  # Full HD landscape
+                self.log_message("Chuẩn hóa theo tỷ lệ 16:9 (Ngang) - 1920x1080")
+            elif '9:16' in aspect_ratio_text:
+                target_size = (1080, 1920)  # Full HD portrait
+                self.log_message("Chuẩn hóa theo tỷ lệ 9:16 (Dọc) - 1080x1920")
+            elif '4:3' in aspect_ratio_text:
+                target_size = (1440, 1080)  # 4:3 aspect ratio
+                self.log_message("Chuẩn hóa theo tỷ lệ 4:3 (Vuông) - 1440x1080")
+            elif '1:1' in aspect_ratio_text:
+                target_size = (1080, 1080)  # Square
+                self.log_message("Chuẩn hóa theo tỷ lệ 1:1 (Vuông) - 1080x1080")
+            else:
+                target_size = (1920, 1080)  # Default to 16:9
+                self.log_message("Sử dụng mặc định 16:9 - 1920x1080")
             
             self.log_message(f"Chuẩn hóa video theo: {target_size[0]}x{target_size[1]} @ {target_fps}fps")
             
@@ -325,8 +494,10 @@ Lưu ý:
                         if clip.fps != target_fps:
                             clip = clip.with_fps(target_fps)
                         
+                        # Resize with proper aspect ratio handling
                         if clip.size != target_size:
-                            clip = clip.resized(target_size)
+                            # Resize and center crop to maintain aspect ratio
+                            clip = clip.resized(target_size).with_position('center')
                         
                         clips.append(clip)
                         actual_total_duration += clip.duration
@@ -432,7 +603,8 @@ Lưu ý:
                         if clip.fps != target_fps:
                             clip = clip.with_fps(target_fps)
                         if clip.size != target_size:
-                            clip = clip.resized(target_size)
+                            # Resize and center crop to maintain aspect ratio
+                            clip = clip.resized(target_size).with_position('center')
                         
                         clips.append(clip)
                         actual_total_duration += clip.duration
@@ -457,7 +629,114 @@ Lưu ý:
             messagebox.showerror("Lỗi", f"Có lỗi xảy ra:\n{str(e)}")
         
         finally:
-            self.process_button.config(state=tk.NORMAL)
+            self.merge_button.config(state=tk.NORMAL)
+    
+    def split_video(self):
+        try:
+            input_file = self.split_input_file.get()
+            output_folder = self.split_output_folder.get()
+            segment_duration = self.split_duration.get()
+            
+            self.log_split_message(f"Bắt đầu tách video: {Path(input_file).name}")
+            self.log_split_message(f"Thời lượng mỗi đoạn: {segment_duration} giây")
+            self.progress_var.set(10)
+            
+            # Get video info first
+            temp_clip = VideoFileClip(input_file)
+            total_duration = temp_clip.duration
+            fps = temp_clip.fps
+            temp_clip.close()
+            
+            self.log_split_message(f"Tổng thời lượng video: {total_duration:.1f} giây")
+            
+            # Calculate number of segments
+            num_segments = int(total_duration / segment_duration)
+            if total_duration % segment_duration > 0:
+                num_segments += 1  # Add one more for the remainder
+            
+            self.log_split_message(f"Sẽ tách thành {num_segments} đoạn video")
+            self.progress_var.set(20)
+            
+            # Get base filename without extension
+            base_filename = Path(input_file).stem
+            
+            # Split the video into segments - load fresh clip for each segment
+            for i in range(num_segments):
+                start_time = i * segment_duration
+                end_time = min((i + 1) * segment_duration, total_duration)
+                
+                # Create output filename with zero-padded numbering
+                output_filename = f"{base_filename}_{i+1:03d}.mp4"
+                output_path = Path(output_folder) / output_filename
+                
+                self.log_split_message(f"Đang tạo đoạn {i+1}/{num_segments}: {output_filename} ({end_time-start_time:.1f}s)")
+                
+                segment = None
+                try:
+                    # Load a fresh clip for each segment to avoid ffmpeg corruption
+                    fresh_clip = VideoFileClip(input_file)
+                    segment = fresh_clip.subclipped(start_time, end_time)
+                    
+                    # Write the segment with basic parameters
+                    segment.write_videofile(
+                        str(output_path),
+                        codec='libx264',
+                        audio_codec='aac',
+                        fps=fps,
+                        preset='medium',
+                        ffmpeg_params=['-crf', '23'],
+                        logger=None
+                    )
+                    
+                    self.log_split_message(f"Hoàn thành: {output_filename}")
+                    
+                except Exception as segment_error:
+                    self.log_split_message(f"Lỗi khi tạo {output_filename}: {str(segment_error)}")
+                    # Try alternative approach with minimal parameters
+                    try:
+                        if segment:
+                            segment.close()
+                        fresh_clip = VideoFileClip(input_file)
+                        segment = fresh_clip.subclipped(start_time, end_time)
+                        segment.write_videofile(
+                            str(output_path),
+                            logger=None
+                        )
+                        self.log_split_message(f"Hoàn thành (phương pháp thay thế): {output_filename}")
+                    except Exception as fallback_error:
+                        self.log_split_message(f"Không thể tạo {output_filename}: {str(fallback_error)}")
+                        continue
+                
+                finally:
+                    # Clean up
+                    try:
+                        if segment:
+                            segment.close()
+                        if 'fresh_clip' in locals():
+                            fresh_clip.close()
+                    except:
+                        pass
+                
+                # Update progress
+                progress = 20 + ((i + 1) / num_segments) * 70
+                self.progress_var.set(progress)
+            
+            self.progress_var.set(100)
+            self.status_var.set("Hoàn thành!")
+            self.log_split_message(f"Tách video thành công! Đã tạo file trong {output_folder}")
+            
+            messagebox.showinfo("Thành công", 
+                              f"Video đã được tách thành công!\n"
+                              f"Các file đã được lưu trong:\n{output_folder}")
+            
+        except Exception as e:
+            self.progress_var.set(0)
+            self.status_var.set("Có lỗi xảy ra!")
+            self.log_split_message(f"Lỗi: {str(e)}")
+            messagebox.showerror("Lỗi", f"Có lỗi xảy ra khi tách video:\n{str(e)}")
+        
+        finally:
+            self.split_button.config(state=tk.NORMAL)
 
 def main():
     root = tk.Tk()
