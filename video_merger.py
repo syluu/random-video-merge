@@ -20,7 +20,8 @@ class VideoMergerApp:
         self.output_path = tk.StringVar()
         
         # Variables for split feature
-        self.split_input_file = tk.StringVar()
+        self.split_input_files = []  # List to store multiple files
+        self.split_display_text = tk.StringVar()  # For displaying selected files
         self.split_output_folder = tk.StringVar()
         self.split_duration = tk.DoubleVar(value=5.0)
         
@@ -33,7 +34,7 @@ class VideoMergerApp:
         self.target_duration.trace('w', self.reset_progress)
         self.aspect_ratio.trace('w', self.reset_progress)
         self.output_path.trace('w', self.reset_progress)
-        self.split_input_file.trace('w', self.reset_progress)
+        self.split_display_text.trace('w', self.reset_progress)
         self.split_output_folder.trace('w', self.reset_progress)
         self.split_duration.trace('w', self.reset_progress)
         
@@ -153,10 +154,16 @@ Lưu ý:
         # Configure grid weights
         self.split_frame.columnconfigure(1, weight=1)
         
-        # Input file selection
+        # Input files selection
         ttk.Label(self.split_frame, text="Chọn video cần tách:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(self.split_frame, textvariable=self.split_input_file, width=50).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
-        ttk.Button(self.split_frame, text="Chọn video", command=self.select_split_input).grid(row=0, column=2, pady=5)
+        ttk.Entry(self.split_frame, textvariable=self.split_display_text, width=50, state="readonly").grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5), pady=5)
+        
+        # Buttons for file selection
+        button_frame = ttk.Frame(self.split_frame)
+        button_frame.grid(row=0, column=2, padx=(5, 0), pady=5)
+        
+        ttk.Button(button_frame, text="Chọn video", command=self.select_split_input).grid(row=0, column=0, pady=(0, 2))
+        ttk.Button(button_frame, text="Xóa tất cả", command=self.clear_split_input).grid(row=1, column=0)
         
         # Output folder selection
         ttk.Label(self.split_frame, text="Thư mục lưu video tách:").grid(row=1, column=0, sticky=tk.W, pady=5)
@@ -190,18 +197,25 @@ Lưu ý:
         # Insert initial info
         split_info_content = """Hướng dẫn tách video:
 
-1. Chọn file video cần tách (.mp4, .avi, .mov, .mkv)
+1. Chọn video cần tách (.mp4, .avi, .mov, .mkv) - có thể chọn nhiều file
 2. Chọn thư mục để lưu các video được tách
 3. Thiết lập thời lượng cho mỗi đoạn video (ví dụ: 5 giây)
 4. Nhấn "Bắt đầu tách video" để thực hiện
 
+Tính năng mới:
+- ✨ Hỗ trợ tách nhiều video cùng lúc
+- Có thể chọn thêm video sau khi đã chọn trước đó
+- Nút "Xóa tất cả" để bỏ chọn tất cả video
+
 Lưu ý:
-- Video sẽ được tách thành các đoạn có độ dài bằng nhau
-- Đoạn cuối có thể ngắn hơn nếu không đủ thời lượng
-- Tên file được đánh số thứ tự: video_001.mp4, video_002.mp4, ..."""
+- Mỗi video sẽ được tách thành các đoạn riêng biệt
+- Tên file: tên_video_001.mp4, tên_video_002.mp4, ..."""
         
         self.split_info_text.insert(tk.END, split_info_content)
         self.split_info_text.config(state=tk.DISABLED)
+        
+        # Initialize display
+        self.update_split_display()
         
     def reset_progress(self, *args):
         """Reset progress bar when config changes"""
@@ -226,8 +240,8 @@ Lưu ý:
             self.log_merge_message(f"File đầu ra: {output_file}")
     
     def select_split_input(self):
-        input_file = filedialog.askopenfilename(
-            title="Chọn video cần tách",
+        input_files = filedialog.askopenfilenames(
+            title="Chọn video cần tách (có thể chọn nhiều file)",
             filetypes=[
                 ("Video files", "*.mp4;*.avi;*.mov;*.mkv;*.wmv;*.flv;*.webm"),
                 ("MP4 files", "*.mp4"),
@@ -237,18 +251,42 @@ Lưu ý:
                 ("All files", "*.*")
             ]
         )
-        if input_file:
-            self.split_input_file.set(input_file)
-            self.log_split_message(f"Video được chọn: {input_file}")
+        if input_files:
+            # Add new files to existing list (avoid duplicates)
+            for file in input_files:
+                if file not in self.split_input_files:
+                    self.split_input_files.append(file)
             
-            # Try to get video info
-            try:
-                temp_clip = VideoFileClip(input_file)
-                duration = temp_clip.duration
-                temp_clip.close()
-                self.log_split_message(f"Thời lượng video: {duration:.1f} giây")
-            except Exception as e:
-                self.log_split_message(f"Lỗi khi đọc video: {str(e)}")
+            self.update_split_display()
+            self.log_split_message(f"Đã chọn {len(input_files)} video mới")
+            self.log_split_message(f"Tổng cộng: {len(self.split_input_files)} video")
+            
+            # Show info for each new video
+            for input_file in input_files:
+                if input_file not in self.split_input_files[:-len(input_files)]:  # Only new files
+                    try:
+                        temp_clip = VideoFileClip(input_file)
+                        duration = temp_clip.duration
+                        temp_clip.close()
+                        filename = Path(input_file).name
+                        self.log_split_message(f"- {filename}: {duration:.1f} giây")
+                    except Exception as e:
+                        filename = Path(input_file).name
+                        self.log_split_message(f"- {filename}: Lỗi đọc video - {str(e)}")
+    
+    def clear_split_input(self):
+        self.split_input_files.clear()
+        self.update_split_display()
+        self.log_split_message("Đã xóa tất cả video đã chọn")
+    
+    def update_split_display(self):
+        if not self.split_input_files:
+            self.split_display_text.set("Chưa chọn video nào")
+        elif len(self.split_input_files) == 1:
+            filename = Path(self.split_input_files[0]).name
+            self.split_display_text.set(f"1 video: {filename}")
+        else:
+            self.split_display_text.set(f"{len(self.split_input_files)} video được chọn")
     
     def select_split_output(self):
         output_folder = filedialog.askdirectory(title="Chọn thư mục lưu video tách")
@@ -320,8 +358,8 @@ Lưu ý:
     
     def start_split_processing(self):
         # Validate inputs
-        if not self.split_input_file.get():
-            messagebox.showerror("Lỗi", "Vui lòng chọn video cần tách!")
+        if not self.split_input_files:
+            messagebox.showerror("Lỗi", "Vui lòng chọn ít nhất một video cần tách!")
             return
             
         if not self.split_output_folder.get():
@@ -633,101 +671,127 @@ Lưu ý:
     
     def split_video(self):
         try:
-            input_file = self.split_input_file.get()
+            input_files = self.split_input_files.copy()
             output_folder = self.split_output_folder.get()
             segment_duration = self.split_duration.get()
             
-            self.log_split_message(f"Bắt đầu tách video: {Path(input_file).name}")
+            self.log_split_message(f"Bắt đầu tách {len(input_files)} video")
             self.log_split_message(f"Thời lượng mỗi đoạn: {segment_duration} giây")
-            self.progress_var.set(10)
+            self.progress_var.set(5)
             
-            # Get video info first
-            temp_clip = VideoFileClip(input_file)
-            total_duration = temp_clip.duration
-            fps = temp_clip.fps
-            temp_clip.close()
+            total_segments_created = 0
+            total_videos_processed = 0
             
-            self.log_split_message(f"Tổng thời lượng video: {total_duration:.1f} giây")
-            
-            # Calculate number of segments
-            num_segments = int(total_duration / segment_duration)
-            if total_duration % segment_duration > 0:
-                num_segments += 1  # Add one more for the remainder
-            
-            self.log_split_message(f"Sẽ tách thành {num_segments} đoạn video")
-            self.progress_var.set(20)
-            
-            # Get base filename without extension
-            base_filename = Path(input_file).stem
-            
-            # Split the video into segments - load fresh clip for each segment
-            for i in range(num_segments):
-                start_time = i * segment_duration
-                end_time = min((i + 1) * segment_duration, total_duration)
-                
-                # Create output filename with zero-padded numbering
-                output_filename = f"{base_filename}_{i+1:03d}.mp4"
-                output_path = Path(output_folder) / output_filename
-                
-                self.log_split_message(f"Đang tạo đoạn {i+1}/{num_segments}: {output_filename} ({end_time-start_time:.1f}s)")
-                
-                segment = None
+            # Process each video file
+            for video_index, input_file in enumerate(input_files):
                 try:
-                    # Load a fresh clip for each segment to avoid ffmpeg corruption
-                    fresh_clip = VideoFileClip(input_file)
-                    segment = fresh_clip.subclipped(start_time, end_time)
+                    filename = Path(input_file).name
+                    self.log_split_message(f"\n=== Xử lý video {video_index + 1}/{len(input_files)}: {filename} ===")
                     
-                    # Write the segment with basic parameters
-                    segment.write_videofile(
-                        str(output_path),
-                        codec='libx264',
-                        audio_codec='aac',
-                        fps=fps,
-                        preset='medium',
-                        ffmpeg_params=['-crf', '23'],
-                        logger=None
-                    )
+                    # Get video info first
+                    temp_clip = VideoFileClip(input_file)
+                    total_duration = temp_clip.duration
+                    fps = temp_clip.fps
+                    temp_clip.close()
                     
-                    self.log_split_message(f"Hoàn thành: {output_filename}")
+                    self.log_split_message(f"Thời lượng video: {total_duration:.1f} giây")
                     
-                except Exception as segment_error:
-                    self.log_split_message(f"Lỗi khi tạo {output_filename}: {str(segment_error)}")
-                    # Try alternative approach with minimal parameters
-                    try:
-                        if segment:
-                            segment.close()
-                        fresh_clip = VideoFileClip(input_file)
-                        segment = fresh_clip.subclipped(start_time, end_time)
-                        segment.write_videofile(
-                            str(output_path),
-                            logger=None
-                        )
-                        self.log_split_message(f"Hoàn thành (phương pháp thay thế): {output_filename}")
-                    except Exception as fallback_error:
-                        self.log_split_message(f"Không thể tạo {output_filename}: {str(fallback_error)}")
-                        continue
-                
-                finally:
-                    # Clean up
-                    try:
-                        if segment:
-                            segment.close()
-                        if 'fresh_clip' in locals():
-                            fresh_clip.close()
-                    except:
-                        pass
-                
-                # Update progress
-                progress = 20 + ((i + 1) / num_segments) * 70
-                self.progress_var.set(progress)
+                    # Calculate number of segments for this video
+                    num_segments = int(total_duration / segment_duration)
+                    if total_duration % segment_duration > 0:
+                        num_segments += 1  # Add one more for the remainder
+                    
+                    self.log_split_message(f"Sẽ tách thành {num_segments} đoạn video")
+                    
+                    # Get base filename without extension
+                    base_filename = Path(input_file).stem
+                    
+                    # Split the video into segments - load fresh clip for each segment
+                    for i in range(num_segments):
+                        start_time = i * segment_duration
+                        end_time = min((i + 1) * segment_duration, total_duration)
+                        
+                        # Create output filename with zero-padded numbering
+                        output_filename = f"{base_filename}_{i+1:03d}.mp4"
+                        output_path = Path(output_folder) / output_filename
+                        
+                        self.log_split_message(f"Đang tạo đoạn {i+1}/{num_segments}: {output_filename} ({end_time-start_time:.1f}s)")
+                        
+                        segment = None
+                        fresh_clip = None
+                        try:
+                            # Load a fresh clip for each segment to avoid ffmpeg corruption
+                            fresh_clip = VideoFileClip(input_file)
+                            segment = fresh_clip.subclipped(start_time, end_time)
+                            
+                            # Write the segment with basic parameters
+                            segment.write_videofile(
+                                str(output_path),
+                                codec='libx264',
+                                audio_codec='aac',
+                                fps=fps,
+                                preset='medium',
+                                ffmpeg_params=['-crf', '23'],
+                                logger=None
+                            )
+                            
+                            self.log_split_message(f"Hoàn thành: {output_filename}")
+                            total_segments_created += 1
+                            
+                        except Exception as segment_error:
+                            self.log_split_message(f"Lỗi khi tạo {output_filename}: {str(segment_error)}")
+                            # Try alternative approach with minimal parameters
+                            try:
+                                if segment:
+                                    segment.close()
+                                if fresh_clip:
+                                    fresh_clip.close()
+                                fresh_clip = VideoFileClip(input_file)
+                                segment = fresh_clip.subclipped(start_time, end_time)
+                                segment.write_videofile(
+                                    str(output_path),
+                                    logger=None
+                                )
+                                self.log_split_message(f"Hoàn thành (phương pháp thay thế): {output_filename}")
+                                total_segments_created += 1
+                            except Exception as fallback_error:
+                                self.log_split_message(f"Không thể tạo {output_filename}: {str(fallback_error)}")
+                                continue
+                        
+                        finally:
+                            # Clean up
+                            try:
+                                if segment:
+                                    segment.close()
+                                if fresh_clip:
+                                    fresh_clip.close()
+                            except:
+                                pass
+                        
+                        # Update progress based on overall completion
+                        overall_progress = 5 + ((video_index * 100 + ((i + 1) / num_segments) * 100) / len(input_files)) * 0.9
+                        self.progress_var.set(overall_progress)
+                    
+                    total_videos_processed += 1
+                    self.log_split_message(f"Hoàn thành video: {filename}")
+                    
+                except Exception as video_error:
+                    filename = Path(input_file).name
+                    self.log_split_message(f"Lỗi khi xử lý video {filename}: {str(video_error)}")
+                    continue
             
             self.progress_var.set(100)
             self.status_var.set("Hoàn thành!")
-            self.log_split_message(f"Tách video thành công! Đã tạo file trong {output_folder}")
+            self.log_split_message(f"\n=== KẾT QUẢ ===")
+            self.log_split_message(f"Đã xử lý: {total_videos_processed}/{len(input_files)} video")
+            self.log_split_message(f"Tổng số đoạn được tạo: {total_segments_created}")
+            self.log_split_message(f"Các file được lưu trong: {output_folder}")
             
             messagebox.showinfo("Thành công", 
-                              f"Video đã được tách thành công!\n"
-                              f"Các file đã được lưu trong:\n{output_folder}")
+                              f"Tách video hoàn thành!\n"
+                              f"Đã xử lý: {total_videos_processed}/{len(input_files)} video\n"
+                              f"Tổng số đoạn: {total_segments_created}\n"
+                              f"Thư mục: {output_folder}")
             
         except Exception as e:
             self.progress_var.set(0)
